@@ -1,0 +1,12 @@
+Bootstrap: docker
+From: python:3.10
+
+%files
+    ../src /data-tools/src
+    ../requirements.txt /data-tools/requirements.txt
+    ../pyproject.toml /data-tools/pyproject.toml
+    ../README.md /data-tools/README.md
+
+%post
+    pip install -r /data-tools/requirements.txt
+    pip install /data-tools
