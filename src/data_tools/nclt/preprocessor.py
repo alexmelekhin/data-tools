@@ -41,8 +41,10 @@ class Preprocessor:
         self.lidar_synced_with_cameras = True
         self.img_format = "tiff"
 
-        undistort_map_filepath = self.data_dir / "U2D_Cam0_1616X1232.txt"
-        self.undistorter = Undistort(undistort_map_filepath)
+        self.undistorter = {}
+        for cam in self.cameras:
+            undistort_map_filepath = self.data_dir / "undistort_maps" / f"U2D_{cam}_1616X1232.txt"
+            self.undistorter[cam] = Undistort(undistort_map_filepath)
 
         self.center_crop_size = (768, 960)
         self.resize_size = (384, 480)
@@ -66,10 +68,10 @@ class Preprocessor:
         ].astype(np.float64)
         return track_df
 
-    def process_image(self, src_filepath: Path, dst_filepath: Path) -> None:
+    def process_image(self, src_filepath: Path, dst_filepath: Path, cam: str) -> None:
         dst_filepath.parent.mkdir(parents=True, exist_ok=True)
         img = cv2.imread(str(src_filepath))
-        img = self.undistorter(img)
+        img = self.undistorter[cam](img)
         img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         img = center_crop(img, self.center_crop_size)
         img = cv2.resize(img, self.resize_size, interpolation=cv2.INTER_CUBIC)
@@ -175,7 +177,7 @@ class Preprocessor:
                 for image_ts in images_timestamps:
                     image_path = images_input_dir / camera / f"{image_ts}.tiff"
                     image_path_output = images_output_dir / camera / f"{image_ts}.png"
-                    futures.append(executor.submit(self.process_image, image_path, image_path_output))
+                    futures.append(executor.submit(self.process_image, image_path, image_path_output, camera))
                 for future in tqdm(
                     concurrent.futures.as_completed(futures),
                     desc=camera,
